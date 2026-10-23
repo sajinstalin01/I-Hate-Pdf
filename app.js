@@ -9,7 +9,7 @@
     rotate:{title:"Rotate PDF",description:"Rotate all pages clockwise by 90 degrees.",label:"Output filename",placeholder:"rotated.pdf",help:"All pages are rotated clockwise by 90 degrees.",accept:".pdf",multiple:false},
     watermark:{title:"Watermark PDF",description:"Stamp text across every page of your PDF.",label:"Watermark text",placeholder:"CONFIDENTIAL",help:"Text is added diagonally near the center of each page.",accept:".pdf",multiple:false},
     "jpg-to-pdf":{title:"JPG to PDF",description:"Create a PDF from JPG, PNG, or WebP images.",label:"Output filename",placeholder:"images.pdf",help:"Images are added in the order shown below. PNG and JPG are supported directly; WebP support depends on browser decoding.",accept:".jpg,.jpeg,.png,.webp",multiple:true},
-    "pdf-to-jpg":{title:"PDF to JPG",description:"Export PDF pages as images.",label:"Export note",placeholder:"PDF page rendering is not enabled in this starter",help:"Requires PDF.js rendering and ZIP export, planned for a future release.",accept:".pdf",multiple:false},
+    "pdf-to-jpg":{title:"PDF to JPG",description:"Export PDF pages as images.",label:"Export note",placeholder:"pages.zip",help:"Renders each page to a JPEG and downloads all images in a ZIP file.",accept:".pdf",multiple:false},
     protect:{title:"Protect PDF",description:"Add password encryption to a PDF.",label:"Password",placeholder:"Password encryption engine not configured",help:"The current browser library does not provide PDF encryption. This operation is not implemented.",accept:".pdf",multiple:false},
     unlock:{title:"Unlock PDF",description:"Open a PDF you are authorized to access.",label:"Password",placeholder:"Enter the document password",help:"Password removal is only available for files you own or are authorized to modify. Encrypted PDF support is limited.",accept:".pdf",multiple:false},
     organize:{title:"Organize pages",description:"Inspect the PDF and prepare page reordering.",label:"Feature status",placeholder:"Page-thumbnail editor planned",help:"Interactive page thumbnails and drag-to-reorder are planned, not yet implemented.",accept:".pdf",multiple:false},
@@ -116,7 +116,7 @@
           const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("Could not export page "+i)),"image/jpeg",.9));
           zip.file("page-"+String(i).padStart(3,"0")+".jpg",blob);canvas.width=0;canvas.height=0;
         }
-        out=await zip.generateAsync({type:"uint8array"});name=state.files[0].name.replace(/\\.pdf$/i,"")+"-images.zip";outputType="application/zip";
+        out=await zip.generateAsync({type:"uint8array"});name=state.files[0].name.replace(/\.pdf$/i,"")+"-images.zip";outputType="application/zip";
       }else if(t==="compress"){
         const pdf=await loadPdf(state.files[0]);out=await pdf.save({useObjectStreams:true});name=safeName(opt,"optimized.pdf");
       }else if(t==="rotate"){
