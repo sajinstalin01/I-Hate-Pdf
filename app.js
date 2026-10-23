@@ -86,8 +86,8 @@
   function validate(){
     const t=state.tool;
     const count=state.files.length;
-    let needed=t==="merge"?2:1;
-    const implemented=["merge","split","compress","rotate","watermark","jpg-to-pdf","pdf-to-jpg","page-numbers"];
+    let needed=(t==="merge"||t==="compare"||t==="office-to-pdf")?2:1;
+    const implemented=["merge","split","compress","rotate","watermark","jpg-to-pdf","pdf-to-jpg","page-numbers","delete-pages","extract-pages","reorder-pages","crop","pdf-to-text","ocr","pdf-to-docx","office-to-pdf","html-to-pdf","redact","compare","protect","unlock"];
     const can=t&&count>=needed&&implemented.includes(t);
     $("#processButton").disabled=!can;
     if(!t)setStatus("Ready when you are");
@@ -158,6 +158,17 @@
           zip.file("page-"+String(i).padStart(3,"0")+".jpg",blob);canvas.width=0;canvas.height=0;
         }
         out=await zip.generateAsync({type:"uint8array"});name=state.files[0].name.replace(/\.pdf$/i,"")+"-images.zip";outputType="application/zip";
+      }else if(t==="delete-pages"||t==="extract-pages"||t==="reorder-pages"){
+        const pdf=await loadPdf(state.files[0]);const count=pdf.getPageCount();
+        const parsePages=(value)=>{if(!value.trim())throw new Error("Enter page numbers, e.g. 1,3-4.");const out=[];for(const part of value.split(",")){const p=part.trim();if(p.includes("-")){const pair=p.split("-");const a=Number(pair[0]),b=Number(pair[1]);if(!Number.isInteger(a)||!Number.isInteger(b)||a<1||b<a||b>count)throw new Error("Invalid page range: "+p);for(let n=a;n<=b;n++)out.push(n-1);}else{const n=Number(p);if(!Number.isInteger(n)||n<1||n>count)throw new Error("Page number outside 1-"+count);out.push(n-1);}}return [...new Set(out)];};
+        const selected=parsePages(opt);const doc=await PDFLib.PDFDocument.create();
+        if(t==="delete-pages"){const removed=new Set(selected);if(removed.size===count)throw new Error("Cannot delete every page.");const keep=pdf.getPageIndices().filter(i=>!removed.has(i));const pages=await doc.copyPages(pdf,keep);pages.forEach(p=>doc.addPage(p));name=state.files[0].name.replace(/\.pdf$/i,"")+"-pages-removed.pdf";}
+        else if(t==="extract-pages"){const pages=await doc.copyPages(pdf,selected);pages.forEach(p=>doc.addPage(p));name=state.files[0].name.replace(/\.pdf$/i,"")+"-extracted.pdf";}
+        else {if(selected.length!==count||new Set(selected).size!==count)throw new Error("List every page exactly once, e.g. 3,1,2.");const pages=await doc.copyPages(pdf,selected);pages.forEach(p=>doc.addPage(p));name=state.files[0].name.replace(/\.pdf$/i,"")+"-reordered.pdf";}
+        out=await doc.save();
+      }else if(t==="crop"){
+        const values=opt.split(",").map(Number);if(values.length!==4||values.some(v=>!Number.isFinite(v)||v<0)||values[2]<=0||values[3]<=0)throw new Error("Enter x,y,width,height using positive dimensions.");
+        const pdf=await loadPdf(state.files[0]);for(const p of pdf.getPages()){const {width,height}=p.getSize();const [x,y,w,h]=values;if(x+w>width||y+h>height)throw new Error("Crop rectangle exceeds page size.");p.setCropBox(x,y,w,h);}out=await pdf.save();name=state.files[0].name.replace(/\.pdf$/i,"")+"-cropped.pdf";
       }else if(t==="compress"){
         const pdf=await loadPdf(state.files[0]);out=await pdf.save({useObjectStreams:true});name=safeName(opt,"optimized.pdf");
       }else if(t==="rotate"){
