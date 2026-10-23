@@ -14,7 +14,18 @@
     unlock:{title:"Unlock PDF",description:"Open a PDF you are authorized to access.",label:"Password",placeholder:"Enter the document password",help:"Password removal is only available for files you own or are authorized to modify. Encrypted PDF support is limited.",accept:".pdf",multiple:false},
     organize:{title:"Organize pages",description:"Inspect the PDF and prepare page reordering.",label:"Feature status",placeholder:"Page-thumbnail editor planned",help:"Interactive page thumbnails and drag-to-reorder are planned, not yet implemented.",accept:".pdf",multiple:false},
     "page-numbers":{title:"Page numbers",description:"Add page numbers to every page.",label:"Starting number",placeholder:"1",help:"Numbers are added at the bottom center of each page.",accept:".pdf",multiple:false},
-    edit:{title:"Edit PDF",description:"Add text and graphics to existing PDF pages.",label:"Feature status",placeholder:"Full visual editor planned",help:"The visual editor is not implemented in this initial release.",accept:".pdf",multiple:false}
+    edit:{title:"Edit PDF",description:"Add text and graphics to existing PDF pages.",label:"Feature status",placeholder:"Full visual editor planned",help:"The full visual editor remains on the roadmap.",accept:".pdf",multiple:false},
+    "delete-pages":{title:"Delete pages",description:"Remove selected pages from a PDF.",label:"Pages to delete",placeholder:"2,4-6",help:"Page numbers start at 1. Example: 2,4-6.",accept:".pdf",multiple:false},
+    "extract-pages":{title:"Extract pages",description:"Extract selected pages into a new PDF.",label:"Pages to extract",placeholder:"1,3-5",help:"Page numbers start at 1. Example: 1,3-5.",accept:".pdf",multiple:false},
+    "reorder-pages":{title:"Reorder pages",description:"Reorder all pages using a comma-separated list.",label:"New page order",placeholder:"3,1,2",help:"List every page exactly once. Example for 3 pages: 3,1,2.",accept:".pdf",multiple:false},
+    crop:{title:"Crop PDF",description:"Set a crop rectangle on all pages.",label:"Crop rectangle",placeholder:"x,y,width,height",help:"Enter crop values in PDF points, e.g. 20,20,550,750. Values apply to every page.",accept:".pdf",multiple:false},
+    "pdf-to-text":{title:"PDF to text",description:"Extract selectable text from a PDF.",label:"Password (optional)",placeholder:"Password if the PDF is encrypted",help:"Downloads extracted text as a TXT file. Requires the optional backend API.",accept:".pdf",multiple:false},
+    ocr:{title:"OCR PDF",description:"Recognize text in scanned PDF pages.",label:"OCR language",placeholder:"eng",help:"Requires backend API with Tesseract and the selected language pack installed.",accept:".pdf",multiple:false},
+    "pdf-to-docx":{title:"PDF to Word",description:"Convert PDF pages into an editable DOCX file.",label:"Password (optional)",placeholder:"Password if needed",help:"Requires backend API and pdf2docx. Layouts may change.",accept:".pdf",multiple:false},
+    "office-to-pdf":{title:"Office to PDF",description:"Convert an Office document to PDF.",label:"Output filename",placeholder:"converted.pdf",help:"Requires backend API with LibreOffice installed.",accept:".doc,.docx,.xls,.xlsx,.ppt,.pptx",multiple:true},
+    "html-to-pdf":{title:"HTML to PDF",description:"Convert an HTML file to PDF.",label:"Output filename",placeholder:"webpage.pdf",help:"Requires backend API with WeasyPrint system libraries.",accept:".html,.htm",multiple:false},
+    redact:{title:"Redact text",description:"Remove exact text matches from a PDF.",label:"Text to redact",placeholder:"One exact term per line",help:"Requires backend API. Inspect the output carefully; scanned images may need OCR first.",accept:".pdf",multiple:false},
+    compare:{title:"Compare PDFs",description:"Compare extracted text from two PDFs.",label:"Password (optional)",placeholder:"Password if needed",help:"Select two PDFs. The backend returns a text diff, not a visual comparison.",accept:".pdf",multiple:true}
   };
   const bytes = (n) => n < 1024 ? n+" B" : n < 1048576 ? (n/1024).toFixed(1)+" KB" : (n/1048576).toFixed(2)+" MB";
   const safeName = (s, fallback) => {
@@ -88,10 +99,40 @@
   function downloadBlob(blob,name){
     const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
   }
+  async function processWithApi(t,info,opt){
+    const btn=$("#processButton");btn.disabled=true;btn.textContent="Processing…";setStatus("Sending files to configured API…");$("#resultPanel").classList.add("hidden");
+    try{
+      const base=(window.IHP_API_BASE||"").replace(/\/$/,"");
+      const data=new FormData();
+      const multi=(t==="compare"||t==="office-to-pdf");
+      state.files.forEach(file=>data.append(multi?"files":"file",file));
+      if(t==="protect")data.append("new_password",opt);
+      else if(t==="unlock"||t==="pdf-to-text"||t==="pdf-to-docx"||t==="compare")data.append("password",opt);
+      else if(t==="redact")data.append("terms",opt);
+      else if(t==="ocr")data.append("lang",opt||"eng");
+      else if(t==="compress")data.append("quality",opt||"ebook");
+      else if(t==="office-to-pdf"||t==="html-to-pdf")data.append("output_name",opt||"converted");
+      const response=await fetch(base+"/api/process/"+t,{method:"POST",body:data});
+      if(!response.ok){let message="API request failed ("+response.status+")";try{message=(await response.json()).error||message;}catch{}throw new Error(message);}
+      const blob=await response.blob();
+      const disposition=response.headers.get("Content-Disposition")||"";
+      const match=disposition.match(/filename="?([^";]+)"?/i);
+      const name=match?match[1]:t+"-result"+(t==="compare"||t==="pdf-to-text"||t==="ocr"?".txt":".pdf");
+      downloadBlob(blob,name);
+      const panel=$("#resultPanel");panel.classList.remove("hidden");panel.textContent="✓ Done! "+name+" · "+bytes(blob.size)+" · Processed by the configured API.";
+      setStatus("Finished successfully");toast("Your output is ready.");
+    }catch(err){
+      const msg=(!window.IHP_API_BASE&&location.protocol.startsWith("http")&&location.hostname.endsWith("github.io"))?"This tool needs a backend. Deploy server.py and set window.IHP_API_BASE to its HTTPS URL.":(err.message||"API request failed.");
+      toast(msg);setStatus("Backend processing unavailable");
+    }finally{btn.disabled=false;btn.textContent=(toolInfo[state.tool]?.title||"Process")+" →";validate();}
+  }
   async function processTool(){
     const t=state.tool;const info=toolInfo[t];const opt=$("#toolOption").value.trim();
     if(!t||!state.files.length)return;
-    if(["protect","unlock","organize","edit"].includes(t)){toast("This tool is not implemented yet. See the roadmap in README.");return;}
+    if(["protect","unlock","pdf-to-text","ocr","pdf-to-docx","office-to-pdf","html-to-pdf","redact","compare"].includes(t)){
+      await processWithApi(t,info,opt);return;
+    }
+    if(["organize","edit"].includes(t)){toast("The visual editor is still on the roadmap.");return;}
     const btn=$("#processButton");btn.disabled=true;btn.textContent="Processing…";setStatus("Processing files locally…");$("#resultPanel").classList.add("hidden");
     try{
       let out,name,outputType="application/pdf";
