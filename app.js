@@ -75,8 +75,8 @@
   function validate(){
     const t=state.tool;
     const count=state.files.length;
-    let needed=t==="merge"||t==="jpg-to-pdf"?2:1;
-    const implemented=["merge","split","compress","rotate","watermark","jpg-to-pdf","page-numbers"];
+    let needed=t==="merge"?2:1;
+    const implemented=["merge","split","compress","rotate","watermark","jpg-to-pdf","pdf-to-jpg","page-numbers"];
     const can=t&&count>=needed&&implemented.includes(t);
     $("#processButton").disabled=!can;
     if(!t)setStatus("Ready when you are");
@@ -91,10 +91,10 @@
   async function processTool(){
     const t=state.tool;const info=toolInfo[t];const opt=$("#toolOption").value.trim();
     if(!t||!state.files.length)return;
-    if(["pdf-to-jpg","protect","unlock","organize","edit"].includes(t)){toast("This tool is not implemented yet. See the roadmap in README.");return;}
+    if(["protect","unlock","organize","edit"].includes(t)){toast("This tool is not implemented yet. See the roadmap in README.");return;}
     const btn=$("#processButton");btn.disabled=true;btn.textContent="Processing…";setStatus("Processing files locally…");$("#resultPanel").classList.add("hidden");
     try{
-      let out,name;
+      let out,name,outputType="application/pdf";
       if(t==="merge"){
         const merged=await PDFLib.PDFDocument.create();
         for(const file of state.files){const pdf=await loadPdf(file);const pages=await merged.copyPages(pdf,pdf.getPageIndices());pages.forEach(p=>merged.addPage(p));}
@@ -103,6 +103,20 @@
         const pdf=await loadPdf(state.files[0]);const pageNo=Number(opt||1);
         if(!Number.isInteger(pageNo)||pageNo<1||pageNo>pdf.getPageCount())throw new Error("Enter a page number between 1 and "+pdf.getPageCount()+".");
         const doc=await PDFLib.PDFDocument.create();const [page]=await doc.copyPages(pdf,[pageNo-1]);doc.addPage(page);out=await doc.save();name=state.files[0].name.replace(/\.pdf$/i,"")+"-page-"+pageNo+".pdf";
+      }else if(t==="pdf-to-jpg"){
+        if(!window.pdfjsLib||!window.JSZip)throw new Error("PDF-to-JPG libraries did not load. Check your internet connection.");
+        pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        const pdf=await pdfjsLib.getDocument({data:await state.files[0].arrayBuffer()}).promise;
+        const zip=new JSZip();
+        for(let i=1;i<=pdf.numPages;i++){
+          setStatus("Rendering page "+i+" of "+pdf.numPages+"…");
+          const page=await pdf.getPage(i);const viewport=page.getViewport({scale:1.5});
+          const canvas=document.createElement("canvas");canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
+          await page.render({canvasContext:canvas.getContext("2d"),viewport}).promise;
+          const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("Could not export page "+i)),"image/jpeg",.9));
+          zip.file("page-"+String(i).padStart(3,"0")+".jpg",blob);canvas.width=0;canvas.height=0;
+        }
+        out=await zip.generateAsync({type:"uint8array"});name=state.files[0].name.replace(/\\.pdf$/i,"")+"-images.zip";outputType="application/zip";
       }else if(t==="compress"){
         const pdf=await loadPdf(state.files[0]);out=await pdf.save({useObjectStreams:true});name=safeName(opt,"optimized.pdf");
       }else if(t==="rotate"){
@@ -119,7 +133,7 @@
         const pdf=await loadPdf(state.files[0]);const start=Number(opt||1);if(!Number.isInteger(start)||start<0)throw new Error("Enter a valid starting number.");
         pdf.getPages().forEach((p,i)=>{const {width}=p.getSize();p.drawText(String(start+i),{x:width/2-5,y:18,size:10,color:PDFLib.rgb(.25,.25,.3)});});out=await pdf.save();name=state.files[0].name.replace(/\.pdf$/i,"")+"-numbered.pdf";
       }
-      const blob=new Blob([out],{type:"application/pdf"});downloadBlob(blob,name);
+      const blob=new Blob([out],{type:outputType});downloadBlob(blob,name);
       const panel=$("#resultPanel");panel.classList.remove("hidden");panel.textContent="✓ Done! "+name+" · "+bytes(blob.size)+" · Your file was processed in this browser.";
       setStatus("Finished successfully");toast("Your PDF is ready to save.");
     }catch(err){console.error(err);toast(err.message||"Could not process this file.");setStatus("Processing failed");}
