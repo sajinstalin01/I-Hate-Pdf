@@ -22,7 +22,7 @@
     "pdf-to-text":{title:"PDF to text",description:"Extract selectable text from a PDF.",label:"Password (optional)",placeholder:"Password if the PDF is encrypted",help:"Downloads extracted text as a TXT file. Requires the optional backend API.",accept:".pdf",multiple:false},
     ocr:{title:"OCR PDF",description:"Recognize text in scanned PDF pages.",label:"OCR language",placeholder:"eng",help:"Requires backend API with Tesseract and the selected language pack installed.",accept:".pdf",multiple:false},
     "pdf-to-docx":{title:"PDF to Word",description:"Convert PDF pages into an editable DOCX file.",label:"Password (optional)",placeholder:"Password if needed",help:"Requires backend API and pdf2docx. Layouts may change.",accept:".pdf",multiple:false},
-    "office-to-pdf":{title:"Office to PDF",description:"Convert an Office document to PDF.",label:"Output filename",placeholder:"converted.pdf",help:"Requires backend API with LibreOffice installed.",accept:".doc,.docx,.xls,.xlsx,.ppt,.pptx",multiple:true},
+    "office-to-pdf":{title:"Office to PDF",description:"Convert an Office document to PDF.",label:"Output filename",placeholder:"converted.pdf",help:"Requires backend API with LibreOffice installed.",accept:".doc,.docx,.xls,.xlsx,.ppt,.pptx",multiple:false},
     "html-to-pdf":{title:"HTML to PDF",description:"Convert an HTML file to PDF.",label:"Output filename",placeholder:"webpage.pdf",help:"Requires backend API with WeasyPrint system libraries.",accept:".html,.htm",multiple:false},
     redact:{title:"Redact text",description:"Remove exact text matches from a PDF.",label:"Text to redact",placeholder:"One exact term per line",help:"Requires backend API. Inspect the output carefully; scanned images may need OCR first.",accept:".pdf",multiple:false},
     compare:{title:"Compare PDFs",description:"Compare extracted text from two PDFs.",label:"Password (optional)",placeholder:"Password if needed",help:"Select two PDFs. The backend returns a text diff, not a visual comparison.",accept:".pdf",multiple:true}
@@ -86,7 +86,7 @@
   function validate(){
     const t=state.tool;
     const count=state.files.length;
-    let needed=(t==="merge"||t==="compare"||t==="office-to-pdf")?2:1;
+    let needed=(t==="merge"||t==="compare")?2:1;
     const implemented=["merge","split","compress","rotate","watermark","jpg-to-pdf","pdf-to-jpg","page-numbers","delete-pages","extract-pages","reorder-pages","crop","pdf-to-text","ocr","pdf-to-docx","office-to-pdf","html-to-pdf","redact","compare","protect","unlock"];
     const can=t&&count>=needed&&implemented.includes(t);
     $("#processButton").disabled=!can;
@@ -129,7 +129,7 @@
   async function processTool(){
     const t=state.tool;const info=toolInfo[t];const opt=$("#toolOption").value.trim();
     if(!t||!state.files.length)return;
-    if(["protect","unlock","pdf-to-text","ocr","pdf-to-docx","office-to-pdf","html-to-pdf","redact","compare"].includes(t)){
+    if(["protect","unlock","pdf-to-text","ocr","pdf-to-docx","office-to-pdf","html-to-pdf","redact","compare"].includes(t)||(t==="compress"&&window.IHP_API_BASE)){
       await processWithApi(t,info,opt);return;
     }
     if(["organize","edit"].includes(t)){toast("The visual editor is still on the roadmap.");return;}
