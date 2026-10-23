@@ -85,6 +85,10 @@ def styles():
 def frontend_js():
     return send_from_directory(Path(__file__).resolve().parent, "app.js")
 
+@app.get("/config.js")
+def frontend_config():
+    return send_from_directory(Path(__file__).resolve().parent, "config.js")
+
 @app.get("/api/health")
 def health():
     return jsonify({"name":"I-Hate-Pdf API","status":"ok","max_upload_mb":app.config["MAX_CONTENT_LENGTH"]//(1024*1024)})
