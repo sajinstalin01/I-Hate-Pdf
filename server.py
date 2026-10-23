@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_UPLOAD_MB", "40")) * 1024 * 1024
-ALLOWED = {".pdf", ".jpg", ".jpeg", ".png", ".webp", ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".html", ".txt"}
+ALLOWED = {".pdf", ".jpg", ".jpeg", ".png", ".webp", ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt", ".html", ".htm", ".txt"}
 MAX_FILES = int(os.getenv("MAX_FILES", "20"))
 
 def err(message, code=400):
