@@ -7,7 +7,7 @@ request-scoped temporary directories and are not retained as a document library.
 from __future__ import annotations
 import difflib, io, os, shutil, subprocess, tempfile
 from pathlib import Path
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -72,6 +72,18 @@ def tool_error(fn):
             app.logger.exception("PDF operation failed")
             return err(f"Could not process this document: {e}", 422)
     return wrapper
+
+@app.get("/")
+def home():
+    return send_from_directory(Path(__file__).resolve().parent, "index.html")
+
+@app.get("/styles.css")
+def styles():
+    return send_from_directory(Path(__file__).resolve().parent, "styles.css")
+
+@app.get("/app.js")
+def frontend_js():
+    return send_from_directory(Path(__file__).resolve().parent, "app.js")
 
 @app.get("/api/health")
 def health():
@@ -244,6 +256,13 @@ def security_headers(response):
     response.headers.setdefault("X-Frame-Options","DENY")
     response.headers.setdefault("Referrer-Policy","no-referrer")
     response.headers.setdefault("Cache-Control","no-store")
+    origin = request.headers.get("Origin")
+    allowed = {v.strip() for v in os.getenv("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000").split(",") if v.strip()}
+    if origin and origin in allowed:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Vary"] = "Origin"
     return response
 
 if __name__ == "__main__":
