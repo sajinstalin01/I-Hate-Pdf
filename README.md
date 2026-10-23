@@ -11,7 +11,7 @@ An open-source, browser-first PDF workspace by [Rolex_key](https://github.com/sa
 - Light/dark theme toggle
 - Drag-and-drop and file picker
 - Local browser processing with [pdf-lib](https://github.com/Hopding/pdf-lib)
-- **Implemented:** Merge PDF, extract one page (Split PDF), rotate pages, text watermark, image-to-PDF, add page numbers, re-save/normalize PDF structure
+- **Implemented:** Merge PDF, extract one page (Split PDF), rotate pages, text watermark, image-to-PDF, PDF-to-JPG ZIP export, add page numbers, re-save/normalize PDF structure
 - Download output directly from the browser
 - Mobile-friendly layout, status messages, and error handling
 - No project backend and no document uploads by this app
@@ -48,7 +48,7 @@ The PDF library is loaded from jsDelivr, so an internet connection is needed for
 
 ## Feature status and roadmap
 
-The catalogue deliberately distinguishes UI placeholders from working operations. These tools are **not implemented yet**: PDF-to-JPG rendering/export, password encryption, password removal, full page-thumbnail reordering, visual PDF editing, OCR, Office document conversion, e-signature workflows, cloud integrations, accounts, and AI features.
+The catalogue deliberately distinguishes UI placeholders from working operations. These tools are **not implemented yet**: password encryption, password removal, full page-thumbnail reordering, visual PDF editing, OCR, Office document conversion, e-signature workflows, cloud integrations, accounts, and AI features.
 
 Suggested roadmap:
 1. Add PDF.js rendering and ZIP export for PDF-to-image.
