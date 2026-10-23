@@ -46,6 +46,7 @@
     $("#fileInput").multiple=info.multiple;
     $("#optionLabel").textContent=info.label;
     $("#toolOption").placeholder=info.placeholder;
+    $("#toolOption").type=(name==="protect"||name==="unlock")?"password":"text";
     $("#toolOption").value="";
     $("#optionHelp").textContent=info.help;
     $("#optionsPanel").classList.remove("hidden");
