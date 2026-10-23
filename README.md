@@ -33,6 +33,10 @@ No build step is needed.
 
 The PDF library is loaded from jsDelivr, so an internet connection is needed for the initial page load. For offline deployment, vendor a reviewed copy of pdf-lib and update the script reference.
 
+## Deploy with GitHub Pages
+
+A workflow is included at `.github/workflows/pages.yml`. In the repository, open **Settings → Pages**, set the build/deployment source to **GitHub Actions**, then push to `main` or run the workflow manually from the **Actions** tab. GitHub will publish the static site after the workflow succeeds.
+
 ## Test checklist
 
 - Open the homepage at desktop and mobile widths.
